@@ -11,7 +11,7 @@
 #include <mutex>
 #include <string>
 
-#define ModuleName "LinkDevice" // set customized log title
+#define ModuleName "UserDefine" // set customized log title
 
 #define ERROR_LEVEL 0
 #define WARN_LEVEL  1
