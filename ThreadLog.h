@@ -11,7 +11,7 @@
 #include <mutex>
 #include <string>
 
-#define ModuleName "UserDefine" // set customized log title
+#define ModuleName "LinkDevice"
 
 #define ERROR_LEVEL 0
 #define WARN_LEVEL  1
@@ -30,7 +30,7 @@ class LogLevel {
   static void set(int l) { level = l; }
 
  private:
-  inline static int level = DEBUG_LEVEL; // set customized log level
+  inline static int level = DEBUG_LEVEL;
 };
 
 class PrintLock {
@@ -141,9 +141,15 @@ class ThreadDepthKeeper {
               std::string((*getDepth()-1) * 2, ' ').c_str());
 
       fprintf(stderr, "--%s()\n", mDepthName.c_str());
-      fflush(stderr);
 
       ThreadColor::getInstance().reset();
+
+      if (*getDepth() == 1) {
+          fprintf(stderr, "%02d:%02d:%02d:%03ld [%s][TRAC]:\n", now->tm_hour,
+                  now->tm_min, now->tm_sec, ts.tv_nsec/1000000, ModuleName);
+      }
+
+      fflush(stderr);
 
       (*getDepth())--;
     }
