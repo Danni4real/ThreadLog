@@ -246,8 +246,8 @@ inline int fprintf (FILE*) {}
                                                                                \
     ThreadColor::getInstance().set();                                          \
                                                                                \
-    fprintf(stderr, "%d:%s  \"", __THREADID__,                                 \
-            std::string((*ThreadDepthKeeper::getDepth()-1) * 2, ' ').c_str()); \
+    fprintf(stderr, "%d:%s\"", __THREADID__,                                   \
+            std::string((*ThreadDepthKeeper::getDepth()) * 2, ' ').c_str());   \
     fprintf(stderr, ##__VA_ARGS__);                                            \
     fprintf(stderr, "\" ----%s:%d\n", __FILENAME__, __LINE__);                 \
     fflush(stderr);                                                            \
