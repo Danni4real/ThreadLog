@@ -6,8 +6,11 @@ ThreadLog is a tool that can:
 3. use -- when thread depth decreased;
 
 mkdir build
+
 cd build
+
 cmake ..
+
 make
 
 ./test
