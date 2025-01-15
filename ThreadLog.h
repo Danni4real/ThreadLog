@@ -11,7 +11,7 @@
 #include <mutex>
 #include <string>
 
-#define ModuleName "LinkDevice"
+#define ModuleName "UserDefine" // set customized log title
 
 #define ERROR_LEVEL 0
 #define WARN_LEVEL  1
@@ -30,7 +30,7 @@ class LogLevel {
   static void set(int l) { level = l; }
 
  private:
-  inline static int level = DEBUG_LEVEL;
+  inline static int level = DEBUG_LEVEL; // set customized log level
 };
 
 class PrintLock {
