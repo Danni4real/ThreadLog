@@ -32,6 +32,10 @@ inline std::string to_str(const char *chars) {
     return chars;
 }
 
+inline std::string to_str(bool b) {
+    return b? "true": "false";
+}
+
 template<typename T>
 std::string to_str(const T &t) {
     return std::to_string(t);
