@@ -4,7 +4,7 @@
 #include "ThreadLog.h"
 
 void call_3() {
-    TRACK_CALL();  // do not use TRACK_CALL_X(), or compile will fail 
+    TRACK_CALL("");  // must pass a empty string if no args to provide, or compiling may failed in some c++ version
     {
         TRACK("sleep", "%d", 1);
         sleep(1);
