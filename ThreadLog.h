@@ -236,6 +236,7 @@ private:
 
 // a hack for fprintf with one arg
 inline int fprintf(FILE *) {
+  return 0;
 }
 
 // user passes arg list, TRACK_CALL_X will print arg names and arg values in human-readable way
