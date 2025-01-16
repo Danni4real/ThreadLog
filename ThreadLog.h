@@ -22,7 +22,7 @@
 #define __FILENAME__ \
   (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 
-#define __THREADID__ (int)syscall(SYS_gettid)
+#define __THREADID__ (int)gettid()
 
 inline std::string to_str(const std::string &str) {
     return str;
