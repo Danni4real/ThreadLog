@@ -4,7 +4,8 @@
 #include "ThreadLog.h"
 
 void call_3() {
-    TRACK_CALL(""); {
+    TRACK_CALL(""); 
+    {
         TRACK("sleep", "%d", 1);
         sleep(1);
     }
