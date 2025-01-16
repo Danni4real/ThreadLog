@@ -18,23 +18,23 @@ void call_2(int a, float b) {
     call_3();
 }
 
-void call_1(int a, float b, std::string c) {
-    TRACK_CALL_X(a, b, c);
+void call_1(int a, float b, std::string c, bool d) {
+    TRACK_CALL_X(a, b, c, d);
     sleep(1);
     call_2(a, b);
 }
 
 int main() {
     std::thread t_1 = std::thread([&] {
-        call_1(1, 2.0, "three");
+        call_1(1, 2.0, "three", true);
     });
 
     std::thread t_2 = std::thread([&] {
-        call_1(2, 3.0, "four");
+        call_1(2, 3.0, "four", false);
     });
 
     std::thread t_3 = std::thread([&] {
-        call_1(3, 4.0, "five");
+        call_1(3, 4.0, "five", false);
     });
 
     t_1.join();
