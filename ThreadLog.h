@@ -240,6 +240,7 @@ inline int fprintf(FILE *) {
 }
 
 // user passes arg list, TRACK_CALL_X will print arg names and arg values in human-readable way
+// warn: can not call TRACK_CALL_X(), call TRACK_CALL() instead
 #define TRACK_CALL_X(...)                                        \
     ArgList arg_list(__VA_ARGS__);                               \
     arg_list.set_names(split_str(catenate(#__VA_ARGS__), ','));  \
