@@ -1,4 +1,3 @@
-
 #ifndef THREADLOG_H
 #define THREADLOG_H
 
@@ -10,8 +9,10 @@
 
 #include <mutex>
 #include <string>
+#include <vector>
+#include <sstream>
 
-#define ModuleName "LinkDevice"
+#define ModuleName "UserDefine" // set customized log title
 
 #define ERROR_LEVEL 0
 #define WARN_LEVEL  1
@@ -23,158 +24,231 @@
 
 #define __THREADID__ (int)syscall(SYS_gettid)
 
+inline std::string to_str(const std::string &str) {
+    return str;
+}
+
+inline std::string to_str(const char *chars) {
+    return chars;
+}
+
+template<typename T>
+std::string to_str(const T &t) {
+    return std::to_string(t);
+}
+
+inline std::vector<std::string> split_str(const std::string &str, char delimiter) {
+    std::vector<std::string> result;
+    std::stringstream ss(str);
+    std::string item;
+
+    while (std::getline(ss, item, delimiter)) {
+        result.push_back(item);
+    }
+
+    return result;
+}
+
+inline std::string catenate(const std::string &names) {
+    return names;
+}
+
+template<typename... Args>
+class ArgList {
+    std::vector<std::string> arg_names;
+    std::tuple<Args...> arg_values;
+    std::vector<std::string> arg_values_strs;
+
+public:
+    ArgList(Args... values) : arg_values(values...) {
+    }
+
+    void set_names(std::vector<std::string> names) {
+        arg_names = names;
+    }
+
+    std::string string() {
+        std::string str;
+        std::apply([this](const auto &... elems) {
+            ((arg_values_strs.push_back(to_str(elems))), ...);
+        }, arg_values);
+        for (int i = 0; i < arg_names.size(); i++) {
+            str += arg_names[i];
+            str += "=";
+            str += arg_values_strs[i];
+            str += ",";
+        }
+        if (!str.empty()) {
+            str.pop_back();
+        }
+        return str;
+    }
+};
+
+#define ARGS_STR(...) ArgList arg_list(__VA_ARGS__);\
+                      arg_list.set_names(split_str(catenate(#__VA_ARGS__), ','));\
+                      arg_list.string();
+
 class LogLevel {
- public:
-  static int get() { return level; }
+public:
+    static int get() { return level; }
 
-  static void set(int l) { level = l; }
+    static void set(int l) { level = l; }
 
- private:
-  inline static int level = DEBUG_LEVEL;
+private:
+    inline static int level = DEBUG_LEVEL; // set customized log level
 };
 
 class PrintLock {
- public:
-  static std::mutex &get() {
-    static std::mutex lock;
-    return lock;
-  }
+public:
+    static std::mutex &get() {
+        static std::mutex lock;
+        return lock;
+    }
 };
 
 class ThreadColor {
- public:
-  enum Color {
-    Green,
-    Yellow,
-    Pink,
-    Teal,
-    BoldOrange,
-    BoldGreen,
-    BoldYellow,
-    BoldBlue,
-    BoldPink,
-    BoldTeal
-  };
+public:
+    enum Color {
+        Green,
+        Yellow,
+        Pink,
+        Teal,
+        BoldOrange,
+        BoldGreen,
+        BoldYellow,
+        BoldBlue,
+        BoldPink,
+        BoldTeal
+    };
 
-  static ThreadColor &getInstance() {
-    static thread_local ThreadColor t;
+    static ThreadColor &getInstance() {
+        static thread_local ThreadColor t;
 
-    return t;
-  }
-
-  void set() {
-    switch (my_color) {
-      case Green:
-        fprintf(stderr, "\033[0;32m");
-        break;
-      case Yellow:
-        fprintf(stderr, "\033[0;33m");
-        break;
-      case Pink:
-        fprintf(stderr, "\033[0;35m");
-        break;
-      case Teal:
-        fprintf(stderr, "\033[0;36m");
-        break;
-      case BoldOrange:
-        fprintf(stderr, "\033[31;1m");
-        break;
-      case BoldGreen:
-        fprintf(stderr, "\033[32;1m");
-        break;
-      case BoldYellow:
-        fprintf(stderr, "\033[33;1m");
-        break;
-      case BoldBlue:
-        fprintf(stderr, "\033[34;1m");
-        break;
-      case BoldPink:
-        fprintf(stderr, "\033[35;1m");
-        break;
-      case BoldTeal:
-        fprintf(stderr, "\033[36;1m");
-        break;
-      default:
-        fprintf(stderr, "\033[0;37");
-        break;
+        return t;
     }
-  }
 
-  void reset() { fprintf(stderr, "\033[0m"); }
+    void set() {
+        switch (my_color) {
+            case Green:
+                fprintf(stderr, "\033[0;32m");
+                break;
+            case Yellow:
+                fprintf(stderr, "\033[0;33m");
+                break;
+            case Pink:
+                fprintf(stderr, "\033[0;35m");
+                break;
+            case Teal:
+                fprintf(stderr, "\033[0;36m");
+                break;
+            case BoldOrange:
+                fprintf(stderr, "\033[31;1m");
+                break;
+            case BoldGreen:
+                fprintf(stderr, "\033[32;1m");
+                break;
+            case BoldYellow:
+                fprintf(stderr, "\033[33;1m");
+                break;
+            case BoldBlue:
+                fprintf(stderr, "\033[34;1m");
+                break;
+            case BoldPink:
+                fprintf(stderr, "\033[35;1m");
+                break;
+            case BoldTeal:
+                fprintf(stderr, "\033[36;1m");
+                break;
+            default:
+                fprintf(stderr, "\033[0;37");
+                break;
+        }
+    }
 
- private:
-  int my_color;
+    void reset() { fprintf(stderr, "\033[0m"); }
 
-  ThreadColor() {
-    static int last_color = Green;
+private:
+    int my_color;
 
-    static std::mutex lock;
-    std::lock_guard<std::mutex> l(lock);
+    ThreadColor() {
+        static int last_color = Green;
 
-    last_color = ++last_color > BoldTeal ? Green : last_color;
+        static std::mutex lock;
+        std::lock_guard l(lock);
 
-    my_color = last_color;
-  }
+        last_color = ++last_color > BoldTeal ? Green : last_color;
+
+        my_color = last_color;
+    }
 };
 
 class ThreadDepthKeeper {
- public:
-  ThreadDepthKeeper() {
-    if (LogLevel::get() >= INFO_LEVEL) {
-      (*getDepth())++;
+public:
+    ThreadDepthKeeper() {
+        if (LogLevel::get() >= INFO_LEVEL) {
+            (*getDepth())++;
+        }
     }
-  }
-  ~ThreadDepthKeeper() {
-    if (LogLevel::get() >= INFO_LEVEL) {
-      std::lock_guard<std::mutex> l(PrintLock::get());
 
-      struct tm *now;
-      struct timespec ts{};
-      clock_gettime(CLOCK_REALTIME,&ts);
-      now = localtime(&ts.tv_sec);
-      fprintf(stderr, "%02d:%02d:%02d:%03ld [%s][TRAC]: ", now->tm_hour,
-              now->tm_min, now->tm_sec, ts.tv_nsec/1000000, ModuleName);
+    ~ThreadDepthKeeper() {
+        if (LogLevel::get() >= INFO_LEVEL) {
+            std::lock_guard l(PrintLock::get());
 
-      ThreadColor::getInstance().set();
+            struct tm *now;
+            struct timespec ts{};
+            clock_gettime(CLOCK_REALTIME, &ts);
+            now = localtime(&ts.tv_sec);
+            fprintf(stderr, "%02d:%02d:%02d:%03ld [%s][TRAC]: ", now->tm_hour,
+                    now->tm_min, now->tm_sec, ts.tv_nsec / 1000000, ModuleName);
 
-      fprintf(stderr, "%d:%s", __THREADID__,
-              std::string((*getDepth()-1) * 2, ' ').c_str());
+            ThreadColor::getInstance().set();
 
-      fprintf(stderr, "--%s()\n", mDepthName.c_str());
+            fprintf(stderr, "%d:%s", __THREADID__,
+                    std::string((*getDepth() - 1) * 2, ' ').c_str());
 
-      ThreadColor::getInstance().reset();
+            fprintf(stderr, "--%s()\n", mDepthName.c_str());
 
-      if (*getDepth() == 1) {
-          fprintf(stderr, "%02d:%02d:%02d:%03ld [%s][TRAC]:\n", now->tm_hour,
-                  now->tm_min, now->tm_sec, ts.tv_nsec/1000000, ModuleName);
-      }
+            ThreadColor::getInstance().reset();
 
-      fflush(stderr);
+            if (*getDepth() == 1) {
+                fprintf(stderr, "%02d:%02d:%02d:%03ld [%s][TRAC]:\n", now->tm_hour,
+                        now->tm_min, now->tm_sec, ts.tv_nsec / 1000000, ModuleName);
+            }
 
-      (*getDepth())--;
+            fflush(stderr);
+
+            (*getDepth())--;
+        }
     }
-  }
 
-  void setDepthName(const std::string &name) {
-    if (LogLevel::get() >= INFO_LEVEL) {
-      mDepthName = name;
+    void setDepthName(const std::string &name) {
+        if (LogLevel::get() >= INFO_LEVEL) {
+            mDepthName = name;
+        }
     }
-  }
 
-  static uint *getDepth() {
-    static thread_local uint depth = 0;
+    static uint *getDepth() {
+        static thread_local uint depth = 0;
 
-    return &depth;
-  }
+        return &depth;
+    }
 
- private:
-  std::string mDepthName;
+private:
+    std::string mDepthName;
 };
 
 // a hack for fprintf with one arg
-inline int fprintf (FILE*) {}
+inline int fprintf(FILE *) {
+}
 
-// track the thread when calls a function
+// user passes arg list, TRACK_CALL_X will print arg names and arg values in human-readable way
+#define TRACK_CALL_X(...)                                    \
+ArgList arg_list(__VA_ARGS__);                               \
+arg_list.set_names(split_str(catenate(#__VA_ARGS__), ','));  \
+TRACK_CALL(arg_list.string().c_str());
+
+// user customizes printable args
 #define TRACK_CALL(...)                                                        \
   ThreadDepthKeeper thread_depth_keeper;                                       \
   do {                                                                         \
@@ -188,7 +262,7 @@ inline int fprintf (FILE*) {}
         fprintf(stderr, "%02d:%02d:%02d:%03ld [%s][TRAC]: ", now->tm_hour,     \
                 now->tm_min, now->tm_sec, ts.tv_nsec/1000000, ModuleName);     \
         ThreadColor::getInstance().set();                                      \
-        std::string depth_name = "handle call: ";                              \
+        std::string depth_name = "";                                           \
         std::string func_name = __PRETTY_FUNCTION__;                           \
         func_name = func_name.substr(0, func_name.find('('));                  \
         func_name = func_name.substr(func_name.find_last_of(' ') + 1);         \
