@@ -85,10 +85,6 @@ public:
     }
 };
 
-#define ARGS_STR(...) ArgList arg_list(__VA_ARGS__);\
-                      arg_list.set_names(split_str(catenate(#__VA_ARGS__), ','));\
-                      arg_list.string();
-
 class LogLevel {
 public:
     static int get() { return level; }
@@ -243,10 +239,10 @@ inline int fprintf(FILE *) {
 }
 
 // user passes arg list, TRACK_CALL_X will print arg names and arg values in human-readable way
-#define TRACK_CALL_X(...)                                    \
-ArgList arg_list(__VA_ARGS__);                               \
-arg_list.set_names(split_str(catenate(#__VA_ARGS__), ','));  \
-TRACK_CALL(arg_list.string().c_str());
+#define TRACK_CALL_X(...)                                        \
+    ArgList arg_list(__VA_ARGS__);                               \
+    arg_list.set_names(split_str(catenate(#__VA_ARGS__), ','));  \
+    TRACK_CALL(arg_list.string().c_str());
 
 // user customizes printable args
 #define TRACK_CALL(...)                                                        \
