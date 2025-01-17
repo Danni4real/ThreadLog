@@ -111,7 +111,6 @@ class ThreadColor {
 public:
     enum Color {
         Green,
-        Yellow,
         Pink,
         Teal,
         BoldOrange,
@@ -132,9 +131,6 @@ public:
         switch (my_color) {
             case Green:
                 fprintf(stderr, "\033[0;32m");
-                break;
-            case Yellow:
-                fprintf(stderr, "\033[0;33m");
                 break;
             case Pink:
                 fprintf(stderr, "\033[0;35m");
@@ -199,7 +195,7 @@ public:
             struct timespec ts{};
             clock_gettime(CLOCK_REALTIME, &ts);
             now = localtime(&ts.tv_sec);
-            fprintf(stderr, "%02d:%02d:%02d:%03ld [%s][TRAC]: ", now->tm_hour,
+            fprintf(stderr, "%02d:%02d:%02d:%03ld [%s][INFO]: ", now->tm_hour,
                     now->tm_min, now->tm_sec, ts.tv_nsec / 1000000, ModuleName);
 
             ThreadColor::getInstance().set();
@@ -207,12 +203,12 @@ public:
             fprintf(stderr, "%d:%s", __THREADID__,
                     std::string((*getDepth() - 1) * 2, ' ').c_str());
 
-            fprintf(stderr, "--%s()\n", mDepthName.c_str());
+            fprintf(stderr, "  } %s\n", mDepthName.c_str());
 
             ThreadColor::getInstance().reset();
 
             if (*getDepth() == 1) {
-                fprintf(stderr, "%02d:%02d:%02d:%03ld [%s][TRAC]:\n", now->tm_hour,
+                fprintf(stderr, "%02d:%02d:%02d:%03ld [%s][INFO]:\n", now->tm_hour,
                         now->tm_min, now->tm_sec, ts.tv_nsec / 1000000, ModuleName);
             }
 
@@ -243,14 +239,18 @@ inline int fprintf(FILE *) {
   return 0;
 }
 
-// user passes arg list, TRACK_CALL_X will print arg names and arg values in human-readable way
-#define TRACK_CALL_X(...)                                        \
-    ArgList arg_list(__VA_ARGS__);                               \
-    arg_list.set_names(split_str(catenate(#__VA_ARGS__), ','));  \
-    TRACK_CALL(arg_list.string().c_str());
+// passes no arg
+#define LOG_CALL_0(...)      \
+    LOG_CALL_X("");          \
 
-// user customizes printable args
-#define TRACK_CALL(...)                                                        \
+// passes arg list, LOG_CALL will print arg names and arg values in human-readable way
+#define LOG_CALL(...)                                            \
+    auto arg_list = ArgList(__VA_ARGS__);                        \
+    arg_list.set_names(split_str(catenate(#__VA_ARGS__), ','));  \
+    LOG_CALL_X(arg_list.string().c_str());                       \
+
+// use printf way
+#define LOG_CALL_X(...)                                                        \
   ThreadDepthKeeper thread_depth_keeper;                                       \
   do {                                                                         \
     if (LogLevel::get() >= INFO_LEVEL) {                                       \
@@ -260,7 +260,7 @@ inline int fprintf(FILE *) {
       now = localtime(&ts.tv_sec);                                             \
       {                                                                        \
         std::lock_guard<std::mutex> l(PrintLock::get());                       \
-        fprintf(stderr, "%02d:%02d:%02d:%03ld [%s][TRAC]: ", now->tm_hour,     \
+        fprintf(stderr, "%02d:%02d:%02d:%03ld [%s][INFO]: ", now->tm_hour,     \
                 now->tm_min, now->tm_sec, ts.tv_nsec/1000000, ModuleName);     \
         ThreadColor::getInstance().set();                                      \
         std::string depth_name = "";                                           \
@@ -272,9 +272,9 @@ inline int fprintf(FILE *) {
         fprintf(                                                               \
             stderr, "%d:%s", __THREADID__,                                     \
             std::string((*ThreadDepthKeeper::getDepth()-1) * 2, ' ').c_str()); \
-        fprintf(stderr, "++%s(", depth_name.c_str());                          \
+        fprintf(stderr, "  %s(", depth_name.c_str());                          \
         fprintf(stderr, ##__VA_ARGS__);                                        \
-        fprintf(stderr, ") ----%s:%d\n", __FILENAME__, __LINE__);              \
+        fprintf(stderr, ") { ----%s:%d\n", __FILENAME__, __LINE__);            \
         fflush(stderr);                                                        \
         ThreadColor::getInstance().reset();                                    \
       }                                                                        \
@@ -282,7 +282,7 @@ inline int fprintf(FILE *) {
   } while (0)
 
 // track the thread when enters a block of code
-#define TRACK(name,...)                                                        \
+#define LOG_SCOPE(...)                                                         \
   ThreadDepthKeeper thread_depth_keeper;                                       \
   do {                                                                         \
     if (LogLevel::get() >= INFO_LEVEL) {                                       \
@@ -292,22 +292,43 @@ inline int fprintf(FILE *) {
       now = localtime(&ts.tv_sec);                                             \
       {                                                                        \
         std::lock_guard<std::mutex> l(PrintLock::get());                       \
-        fprintf(stderr, "%02d:%02d:%02d:%03ld [%s][TRAC]: ", now->tm_hour,     \
+        PRINT_PLAIN("INFO", "{\n")                                             \
+        fprintf(stderr, "%02d:%02d:%02d:%03ld [%s][INFO]: ", now->tm_hour,     \
                 now->tm_min, now->tm_sec, ts.tv_nsec/1000000,ModuleName);      \
         ThreadColor::getInstance().set();                                      \
-        std::string depth_name = name;                                         \
+        std::string depth_name = "";                                           \
         thread_depth_keeper.setDepthName(depth_name);                          \
         fprintf(                                                               \
             stderr, "%d:%s", __THREADID__,                                     \
-            std::string((*ThreadDepthKeeper::getDepth()-1) * 2, ' ').c_str()); \
-        fprintf(stderr, "++%s(", depth_name.c_str());                          \
+            std::string((*ThreadDepthKeeper::getDepth()-1) * 2, '  ').c_str());\
+        fprintf(stderr, "    ");                                               \
         fprintf(stderr, ##__VA_ARGS__);                                        \
-        fprintf(stderr, ") ----%s:%d\n", __FILENAME__, __LINE__);              \
+        fprintf(stderr, "  ----%s:%d\n", __FILENAME__, __LINE__);              \
         fflush(stderr);                                                        \
         ThreadColor::getInstance().reset();                                    \
       }                                                                        \
     }                                                                          \
   } while (0)
+
+#define PRINT_PLAIN(type, ...)                                                     \
+    {                                                                              \
+        struct tm *now;                                                            \
+        struct timespec ts{};                                                      \
+        clock_gettime(CLOCK_REALTIME,&ts);                                         \
+        now = localtime(&ts.tv_sec);                                               \
+                                                                                   \
+        fprintf(stderr, "%02d:%02d:%02d:%03ld [%s][%s]: ", now->tm_hour,           \
+            now->tm_min, now->tm_sec, ts.tv_nsec/1000000, ModuleName,type);        \
+                                                                                   \
+        ThreadColor::getInstance().set();                                          \
+                                                                                   \
+        fprintf(stderr, "%d:%s", __THREADID__,                                     \
+            std::string((*ThreadDepthKeeper::getDepth()) * 2, ' ').c_str());       \
+        fprintf(stderr, ##__VA_ARGS__);                                            \
+        fflush(stderr);                                                            \
+                                                                                   \
+        ThreadColor::getInstance().reset();                                        \
+}
 
 #define PRINT(type, ...)                                                       \
   {                                                                            \
@@ -321,7 +342,7 @@ inline int fprintf(FILE *) {
                                                                                \
     ThreadColor::getInstance().set();                                          \
                                                                                \
-    fprintf(stderr, "%d:%s\"", __THREADID__,                                   \
+    fprintf(stderr, "%d:%s  \"", __THREADID__,                                 \
             std::string((*ThreadDepthKeeper::getDepth()) * 2, ' ').c_str());   \
     fprintf(stderr, ##__VA_ARGS__);                                            \
     fprintf(stderr, "\" ----%s:%d\n", __FILENAME__, __LINE__);                 \
