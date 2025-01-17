@@ -3,44 +3,48 @@
 
 #include "ThreadLog.h"
 
-void call_3() {
-    TRACK_CALL("");  // must pass a empty string if no args to provide, or compiling may failed in some c++ version
+void func_3() {
+    LOG_CALL_0();
     {
-        TRACK("sleep", "%d", 1);
+        LOG_SCOPE("sleep(%d)", 1);
         sleep(1);
     }
     LOG_INFO("this is call_3");
 }
 
-void call_2(int a, float b) {
-    TRACK_CALL("a:%d, b:%.1f", a, b);
+void func_2(int a, float b) {
+    LOG_CALL_X("a:%d, b:%.1f", a, b);
     sleep(1);
-    call_3();
+    func_3();
 }
 
-void call_1(int a, float b, std::string c, bool d) {
-    TRACK_CALL_X(a, b, c, d);
+void func_1(int a, float b, std::string c, bool d) {
+    LOG_CALL(a, b, c, d);
     sleep(1);
-    call_2(a, b);
+    func_2(a, b);
 }
 
 int main() {
+    LOG_CALL_0();
+
     std::thread t_1 = std::thread([&] {
-        call_1(1, 2.0, "three", true);
+        func_1(1, 2.0, "three", true);
     });
 
     std::thread t_2 = std::thread([&] {
-        call_1(2, 3.0, "four", false);
+        func_1(2, 3.0, "four", false);
     });
 
     std::thread t_3 = std::thread([&] {
-        call_1(3, 4.0, "five", false);
+        func_1(3, 4.0, "five", false);
     });
 
     t_1.join();
     t_2.join();
     t_3.join();
 
-
+    LOG_DBUG("TEST LOG_DBUG");
+    LOG_WARN("TEST LOG_WARN");
+    LOG_ERROR("TEST LOG_ERROR");
     return 0;
 }
