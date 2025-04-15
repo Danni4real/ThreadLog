@@ -101,8 +101,8 @@ private:
 
 class PrintLock {
 public:
-    static std::mutex &get() {
-        static std::mutex lock;
+    static std::recursive_mutex &get() {
+        static std::recursive_mutex lock;
         return lock;
     }
 };
@@ -259,7 +259,7 @@ inline int fprintf(FILE *) {
       clock_gettime(CLOCK_REALTIME,&ts);                                       \
       now = localtime(&ts.tv_sec);                                             \
       {                                                                        \
-        std::lock_guard<std::mutex> l(PrintLock::get());                       \
+        std::lock_guard l(PrintLock::get());                                   \
         fprintf(stderr, "%02d:%02d:%02d:%03ld [%s][INFO]: ", now->tm_hour,     \
                 now->tm_min, now->tm_sec, ts.tv_nsec/1000000, ModuleName);     \
         ThreadColor::getInstance().set();                                      \
@@ -291,7 +291,7 @@ inline int fprintf(FILE *) {
       clock_gettime(CLOCK_REALTIME,&ts);                                       \
       now = localtime(&ts.tv_sec);                                             \
       {                                                                        \
-        std::lock_guard<std::mutex> l(PrintLock::get());                       \
+        std::lock_guard l(PrintLock::get());                                   \
         PRINT_PLAIN("INFO", "{\n")                                             \
         fprintf(stderr, "%02d:%02d:%02d:%03ld [%s][INFO]: ", now->tm_hour,     \
                 now->tm_min, now->tm_sec, ts.tv_nsec/1000000,ModuleName);      \
@@ -354,7 +354,7 @@ inline int fprintf(FILE *) {
 #define LOG_ERROR(...)                                 \
   do {                                                 \
     if (LogLevel::get() >= ERROR_LEVEL) {              \
-      std::lock_guard<std::mutex> ll(PrintLock::get());\
+      std::lock_guard ll(PrintLock::get());            \
       fprintf(stderr, "\e[31m");                       \
       PRINT(" ERR", __VA_ARGS__)                       \
     }                                                  \
@@ -363,7 +363,7 @@ inline int fprintf(FILE *) {
 #define LOG_WARN(...)                                  \
   do {                                                 \
     if (LogLevel::get() >= WARN_LEVEL) {               \
-      std::lock_guard<std::mutex> ll(PrintLock::get());\
+      std::lock_guard ll(PrintLock::get());            \
       fprintf(stderr, "\e[33m");                       \
       PRINT("WARN", __VA_ARGS__)                       \
     }                                                  \
@@ -372,7 +372,7 @@ inline int fprintf(FILE *) {
 #define LOG_INFO(...)                                  \
   do {                                                 \
     if (LogLevel::get() >= INFO_LEVEL) {               \
-      std::lock_guard<std::mutex> ll(PrintLock::get());\
+      std::lock_guard ll(PrintLock::get());            \
       PRINT("INFO", __VA_ARGS__)                       \
     }                                                  \
   } while (0)
@@ -380,7 +380,7 @@ inline int fprintf(FILE *) {
 #define LOG_DBUG(...)                                  \
   do {                                                 \
     if (LogLevel::get() >= DEBUG_LEVEL) {              \
-      std::lock_guard<std::mutex> ll(PrintLock::get());\
+      std::lock_guard ll(PrintLock::get());            \
       PRINT("DBUG", __VA_ARGS__)                       \
     }                                                  \
   } while (0)
