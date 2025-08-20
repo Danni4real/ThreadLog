@@ -3,16 +3,23 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
+#include <stdarg.h>
 #include <unistd.h>
-#include <sys/syscall.h>
-#include <sys/timeb.h>
+#include <sys/stat.h>
 
 #include <mutex>
 #include <string>
 #include <vector>
 #include <sstream>
 
-#define ModuleName "UserDefine" // set customized log title
+#define ModuleName "MyModule" // set customized log title
+
+// comment out next line if you do not want to save log to a specific path
+#define LOG_FILE "/tmp/MyModule.log" // old log will be saved as /tmp/MyModule.log.1 /tmp/MyModule.log.2 /tmp/MyModule.log.3 ...
+
+#define LOG_ROTATE_NUM 5
+#define LOG_FILE_SIZE_LIMIT (1*1024*1024) // bytes
 
 #define ERROR_LEVEL 0
 #define WARN_LEVEL  1
@@ -23,6 +30,77 @@
   (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 
 #define __THREADID__ (int)gettid()
+
+#if defined LOG_FILE
+#define LOG(fmt, ...) RotateLog::get_instance().log(fmt, ##__VA_ARGS__)
+#else
+#define LOG(fmt, ...) fprintf(stderr, fmt, ##__VA_ARGS__)
+#endif
+
+class RotateLog {
+public:
+    static RotateLog& get_instance() {
+        static RotateLog instance;
+        return instance;
+    }
+    
+    RotateLog() {
+        m_file_ptr = fopen(LOG_FILE, "a");
+        if (!m_file_ptr)
+            fprintf(stderr,"RotateLog::RotateLog() fopen() failed!\n");
+        else
+            fprintf(stderr,"RotateLog::RotateLog() fopen() ok!\n");
+    }
+
+    void log(const char *fmt, ...) {
+        if (get_file_size(LOG_FILE) >= LOG_FILE_SIZE_LIMIT) {
+            rotate_logs();
+        }
+
+        va_list args;
+        va_start(args, fmt);
+        if (m_file_ptr) {
+            vfprintf(m_file_ptr, fmt, args);
+            fflush(m_file_ptr);
+        }
+
+        vfprintf(stderr, fmt, args);
+        va_end(args);
+    }
+
+private:
+    FILE *m_file_ptr {nullptr};
+
+    long get_file_size(const char *filename) {
+        struct stat st;
+        if (stat(filename, &st) == 0)
+            return st.st_size;
+
+        return 0;
+    }
+
+    void rotate_logs() {
+        char old_name[256], new_name[256];
+
+        snprintf(old_name, sizeof(old_name), LOG_FILE ".%d", LOG_ROTATE_NUM);
+        unlink(old_name);
+
+        for (int i = LOG_ROTATE_NUM - 1; i >= 1; --i) {
+            snprintf(old_name, sizeof(old_name), LOG_FILE ".%d", i);
+            snprintf(new_name, sizeof(new_name), LOG_FILE ".%d", i + 1);
+            rename(old_name, new_name);
+        }
+
+        if (m_file_ptr)
+            fclose(m_file_ptr);
+
+        rename(LOG_FILE, LOG_FILE ".1");
+
+        m_file_ptr = fopen(LOG_FILE, "a");
+        if (!m_file_ptr)
+            fprintf(stderr,"RotateLog::rotate_logs() fopen() failed!");
+    }
+};
 
 inline std::string to_str(const std::string &str) {
     return str;
@@ -130,39 +208,39 @@ public:
     void set() {
         switch (my_color) {
             case Green:
-                fprintf(stderr, "\033[0;32m");
+                LOG("\033[0;32m");
                 break;
             case Pink:
-                fprintf(stderr, "\033[0;35m");
+                LOG("\033[0;35m");
                 break;
             case Teal:
-                fprintf(stderr, "\033[0;36m");
+                LOG("\033[0;36m");
                 break;
             case BoldOrange:
-                fprintf(stderr, "\033[31;1m");
+                LOG("\033[31;1m");
                 break;
             case BoldGreen:
-                fprintf(stderr, "\033[32;1m");
+                LOG("\033[32;1m");
                 break;
             case BoldYellow:
-                fprintf(stderr, "\033[33;1m");
+                LOG("\033[33;1m");
                 break;
             case BoldBlue:
-                fprintf(stderr, "\033[34;1m");
+                LOG("\033[34;1m");
                 break;
             case BoldPink:
-                fprintf(stderr, "\033[35;1m");
+                LOG("\033[35;1m");
                 break;
             case BoldTeal:
-                fprintf(stderr, "\033[36;1m");
+                LOG("\033[36;1m");
                 break;
             default:
-                fprintf(stderr, "\033[0;37");
+                LOG("\033[0;37");
                 break;
         }
     }
 
-    void reset() { fprintf(stderr, "\033[0m"); }
+    void reset() { LOG("\033[0m"); }
 
 private:
     int my_color;
@@ -195,20 +273,20 @@ public:
             struct timespec ts{};
             clock_gettime(CLOCK_REALTIME, &ts);
             now = localtime(&ts.tv_sec);
-            fprintf(stderr, "%02d:%02d:%02d:%03ld [%s][INFO]: ", now->tm_hour,
+            LOG("%02d:%02d:%02d:%03ld [%s][INFO]: ", now->tm_hour,
                     now->tm_min, now->tm_sec, ts.tv_nsec / 1000000, ModuleName);
 
             ThreadColor::getInstance().set();
 
-            fprintf(stderr, "%d:%s", __THREADID__,
+            LOG("%d:%s", __THREADID__,
                     std::string((*getDepth() - 1) * 2, ' ').c_str());
 
-            fprintf(stderr, "  } %s\n", mDepthName.c_str());
+            LOG("  } %s\n", mDepthName.c_str());
 
             ThreadColor::getInstance().reset();
 
             if (*getDepth() == 1) {
-                fprintf(stderr, "%02d:%02d:%02d:%03ld [%s][INFO]:\n", now->tm_hour,
+                LOG("%02d:%02d:%02d:%03ld [%s][INFO]:\n", now->tm_hour,
                         now->tm_min, now->tm_sec, ts.tv_nsec / 1000000, ModuleName);
             }
 
@@ -260,7 +338,7 @@ inline int fprintf(FILE *) {
       now = localtime(&ts.tv_sec);                                             \
       {                                                                        \
         std::lock_guard l(PrintLock::get());                                   \
-        fprintf(stderr, "%02d:%02d:%02d:%03ld [%s][INFO]: ", now->tm_hour,     \
+        LOG("%02d:%02d:%02d:%03ld [%s][INFO]: ", now->tm_hour,                 \
                 now->tm_min, now->tm_sec, ts.tv_nsec/1000000, ModuleName);     \
         ThreadColor::getInstance().set();                                      \
         std::string depth_name = "";                                           \
@@ -269,12 +347,11 @@ inline int fprintf(FILE *) {
         func_name = func_name.substr(func_name.find_last_of(' ') + 1);         \
         depth_name += func_name;                                               \
         thread_depth_keeper.setDepthName(depth_name);                          \
-        fprintf(                                                               \
-            stderr, "%d:%s", __THREADID__,                                     \
+        LOG("%d:%s", __THREADID__,                                             \
             std::string((*ThreadDepthKeeper::getDepth()-1) * 2, ' ').c_str()); \
-        fprintf(stderr, "  %s(", depth_name.c_str());                          \
-        fprintf(stderr, ##__VA_ARGS__);                                        \
-        fprintf(stderr, ") { ----%s:%d\n", __FILENAME__, __LINE__);            \
+        LOG("  %s(", depth_name.c_str());                                      \
+        LOG(__VA_ARGS__);                                                      \
+        LOG(") { ----%s:%d\n", __FILENAME__, __LINE__);                        \
         fflush(stderr);                                                        \
         ThreadColor::getInstance().reset();                                    \
       }                                                                        \
@@ -293,17 +370,16 @@ inline int fprintf(FILE *) {
       {                                                                        \
         std::lock_guard l(PrintLock::get());                                   \
         PRINT_PLAIN("INFO", "{\n")                                             \
-        fprintf(stderr, "%02d:%02d:%02d:%03ld [%s][INFO]: ", now->tm_hour,     \
+        LOG("%02d:%02d:%02d:%03ld [%s][INFO]: ", now->tm_hour,                 \
                 now->tm_min, now->tm_sec, ts.tv_nsec/1000000,ModuleName);      \
         ThreadColor::getInstance().set();                                      \
         std::string depth_name = "";                                           \
         thread_depth_keeper.setDepthName(depth_name);                          \
-        fprintf(                                                               \
-            stderr, "%d:%s", __THREADID__,                                     \
+        LOG("%d:%s", __THREADID__,                                             \
             std::string((*ThreadDepthKeeper::getDepth()-1) * 2, '  ').c_str());\
-        fprintf(stderr, "    ");                                               \
-        fprintf(stderr, ##__VA_ARGS__);                                        \
-        fprintf(stderr, "  ----%s:%d\n", __FILENAME__, __LINE__);              \
+        LOG("    ");                                                           \
+        LOG(__VA_ARGS__);                                                      \
+        LOG("  ----%s:%d\n", __FILENAME__, __LINE__);                          \
         fflush(stderr);                                                        \
         ThreadColor::getInstance().reset();                                    \
       }                                                                        \
@@ -317,14 +393,14 @@ inline int fprintf(FILE *) {
         clock_gettime(CLOCK_REALTIME,&ts);                                         \
         now = localtime(&ts.tv_sec);                                               \
                                                                                    \
-        fprintf(stderr, "%02d:%02d:%02d:%03ld [%s][%s]: ", now->tm_hour,           \
+        LOG("%02d:%02d:%02d:%03ld [%s][%s]: ", now->tm_hour,                       \
             now->tm_min, now->tm_sec, ts.tv_nsec/1000000, ModuleName,type);        \
                                                                                    \
         ThreadColor::getInstance().set();                                          \
                                                                                    \
-        fprintf(stderr, "%d:%s", __THREADID__,                                     \
+        LOG("%d:%s", __THREADID__,                                                 \
             std::string((*ThreadDepthKeeper::getDepth()) * 2, ' ').c_str());       \
-        fprintf(stderr, ##__VA_ARGS__);                                            \
+        LOG(__VA_ARGS__);                                                          \
         fflush(stderr);                                                            \
                                                                                    \
         ThreadColor::getInstance().reset();                                        \
@@ -337,15 +413,15 @@ inline int fprintf(FILE *) {
     clock_gettime(CLOCK_REALTIME,&ts);                                         \
     now = localtime(&ts.tv_sec);                                               \
                                                                                \
-    fprintf(stderr, "%02d:%02d:%02d:%03ld [%s][%s]: ", now->tm_hour,           \
+    LOG("%02d:%02d:%02d:%03ld [%s][%s]: ", now->tm_hour,                       \
             now->tm_min, now->tm_sec, ts.tv_nsec/1000000, ModuleName,type);    \
                                                                                \
     ThreadColor::getInstance().set();                                          \
                                                                                \
-    fprintf(stderr, "%d:%s  \"", __THREADID__,                                 \
+    LOG("%d:%s  \"", __THREADID__,                                             \
             std::string((*ThreadDepthKeeper::getDepth()) * 2, ' ').c_str());   \
-    fprintf(stderr, ##__VA_ARGS__);                                            \
-    fprintf(stderr, "\" ----%s:%d\n", __FILENAME__, __LINE__);                 \
+    LOG(__VA_ARGS__);                                                          \
+    LOG("\" ----%s:%d\n", __FILENAME__, __LINE__);                             \
     fflush(stderr);                                                            \
                                                                                \
     ThreadColor::getInstance().reset();                                        \
@@ -355,8 +431,8 @@ inline int fprintf(FILE *) {
   do {                                                 \
     if (LogLevel::get() >= ERROR_LEVEL) {              \
       std::lock_guard ll(PrintLock::get());            \
-      fprintf(stderr, "\e[31m");                       \
-      PRINT(" ERR", __VA_ARGS__)                       \
+      LOG("\e[31m");                                   \
+      PRINT("ERROR", __VA_ARGS__)                      \
     }                                                  \
   } while (0)
 
@@ -364,7 +440,7 @@ inline int fprintf(FILE *) {
   do {                                                 \
     if (LogLevel::get() >= WARN_LEVEL) {               \
       std::lock_guard ll(PrintLock::get());            \
-      fprintf(stderr, "\e[33m");                       \
+      LOG("\e[33m");                                   \
       PRINT("WARN", __VA_ARGS__)                       \
     }                                                  \
   } while (0)
@@ -381,7 +457,7 @@ inline int fprintf(FILE *) {
   do {                                                 \
     if (LogLevel::get() >= DEBUG_LEVEL) {              \
       std::lock_guard ll(PrintLock::get());            \
-      PRINT("DBUG", __VA_ARGS__)                       \
+      PRINT("DEBUG", __VA_ARGS__)                      \
     }                                                  \
   } while (0)
 
