@@ -15,9 +15,9 @@
 
 #define ModuleName "MyModule" // set customized log title
 
-// comment out next line if you do not want to save log to a specific path
+// comment out next line if you do NOT want to save log to file
+#define SAVE_LOG_TO_FILE
 #define LOG_FILE "/tmp/MyModule.log" // old log will be saved as /tmp/MyModule.log.1 /tmp/MyModule.log.2 /tmp/MyModule.log.3 ...
-
 #define LOG_ROTATE_NUM 5
 #define LOG_FILE_SIZE_LIMIT (1*1024*1024) // bytes
 
@@ -31,7 +31,7 @@
 
 #define __THREADID__ (int)gettid()
 
-#if defined (LOG_FILE)
+#if defined (SAVE_LOG_TO_FILE)
 #define LOG(fmt, ...) RotateLog::get_instance().log(fmt, ##__VA_ARGS__)
 #else
 #define LOG(fmt, ...) fprintf(stderr, fmt, ##__VA_ARGS__)
@@ -435,7 +435,7 @@ inline int fprintf(FILE *) {
     if (LogLevel::get() >= ERROR_LEVEL) {              \
       std::lock_guard ll(PrintLock::get());            \
       LOG("\e[31m");                                   \
-      PRINT("ERROR", __VA_ARGS__)                      \
+      PRINT(" ERR", __VA_ARGS__)                       \
     }                                                  \
   } while (0)
 
@@ -460,7 +460,7 @@ inline int fprintf(FILE *) {
   do {                                                 \
     if (LogLevel::get() >= DEBUG_LEVEL) {              \
       std::lock_guard ll(PrintLock::get());            \
-      PRINT("DEBUG", __VA_ARGS__)                      \
+      PRINT("DBUG", __VA_ARGS__)                       \
     }                                                  \
   } while (0)
 
