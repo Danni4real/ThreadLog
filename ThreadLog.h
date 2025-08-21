@@ -31,7 +31,7 @@
 
 #define __THREADID__ (int)gettid()
 
-#if defined LOG_FILE
+#if defined (LOG_FILE)
 #define LOG(fmt, ...) RotateLog::get_instance().log(fmt, ##__VA_ARGS__)
 #else
 #define LOG(fmt, ...) fprintf(stderr, fmt, ##__VA_ARGS__)
@@ -58,14 +58,17 @@ public:
         }
 
         va_list args;
-        va_start(args, fmt);
-        if (m_file_ptr) {
-            vfprintf(m_file_ptr, fmt, args);
-            fflush(m_file_ptr);
-        }
 
+        va_start(args, fmt);
         vfprintf(stderr, fmt, args);
         va_end(args);
+
+        if (m_file_ptr) {
+            va_start(args, fmt);
+            vfprintf(m_file_ptr, fmt, args);
+            fflush(m_file_ptr);
+            va_end(args);
+        }
     }
 
 private:
@@ -376,7 +379,7 @@ inline int fprintf(FILE *) {
         std::string depth_name = "";                                           \
         thread_depth_keeper.setDepthName(depth_name);                          \
         LOG("%d:%s", __THREADID__,                                             \
-            std::string((*ThreadDepthKeeper::getDepth()-1) * 2, '  ').c_str());\
+            std::string((*ThreadDepthKeeper::getDepth()-1) * 2, ' ').c_str()); \
         LOG("    ");                                                           \
         LOG(__VA_ARGS__);                                                      \
         LOG("  ----%s:%d\n", __FILENAME__, __LINE__);                          \
