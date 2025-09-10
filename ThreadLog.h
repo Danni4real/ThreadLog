@@ -45,30 +45,49 @@ public:
     }
     
     RotateLog() {
-        m_file_ptr = fopen(LOG_FILE, "a");
-        if (!m_file_ptr)
-            fprintf(stderr,"RotateLog::RotateLog() fopen() failed!\n");
-        else
-            fprintf(stderr,"RotateLog::RotateLog() fopen() ok!\n");
+        if (!open_log_file()) {
+            fprintf(stderr,"RotateLog::RotateLog() open_log_file() failed!\n");
+        }
     }
 
     void log(const char *fmt, ...) {
-        if (get_file_size(LOG_FILE) >= LOG_FILE_SIZE_LIMIT) {
-            rotate_logs();
-        }
-
         va_list args;
-
         va_start(args, fmt);
         vfprintf(stderr, fmt, args);
         va_end(args);
 
-        if (m_file_ptr) {
-            va_start(args, fmt);
-            vfprintf(m_file_ptr, fmt, args);
-            fflush(m_file_ptr);
-            va_end(args);
+        if (get_file_size(LOG_FILE) >= LOG_FILE_SIZE_LIMIT) {
+            if (!rotate_logs()) {
+                fprintf(stderr,"RotateLog::log() rotate_logs() failed!\n");
+                return;
+            }
         }
+
+        if (m_file_ptr) {
+            if (access(LOG_FILE, F_OK) != 0) {
+                fprintf(stderr,"RotateLog::log() access() failed!\n");
+
+                if (!close_log_file()) {
+                    fprintf(stderr,"RotateLog::log() close_log_file() failed!\n");
+                    return;
+                }
+
+                if (!open_log_file()) {
+                    fprintf(stderr,"RotateLog::log() open_log_file() failed!\n");
+                    return;
+                }
+            }
+        } else {
+            if (!open_log_file()) {
+                fprintf(stderr,"RotateLog::log() open_log_file() failed!\n");
+                return;
+            }
+        }
+
+        va_start(args, fmt);
+        vfprintf(m_file_ptr, fmt, args);
+        fflush(m_file_ptr);
+        va_end(args);
     }
 
 private:
@@ -82,26 +101,71 @@ private:
         return 0;
     }
 
-    void rotate_logs() {
+    bool rotate_logs() {
+        if (!close_log_file()) {
+            fprintf(stderr,"RotateLog::rotate_logs() close_log_file() failed!\n");
+            return false;
+        }
+
         char old_name[256], new_name[256];
 
         snprintf(old_name, sizeof(old_name), LOG_FILE ".%d", LOG_ROTATE_NUM);
-        unlink(old_name);
+
+        if (access(old_name, F_OK) == 0) {
+            if (unlink(old_name) != 0) {
+                fprintf(stderr,"RotateLog::rotate_logs() unlink() failed!\n");
+                return false;
+            }
+        }
 
         for (int i = LOG_ROTATE_NUM - 1; i >= 1; --i) {
             snprintf(old_name, sizeof(old_name), LOG_FILE ".%d", i);
             snprintf(new_name, sizeof(new_name), LOG_FILE ".%d", i + 1);
-            rename(old_name, new_name);
+
+            if (access(old_name, F_OK) == 0) {
+                if (rename(old_name, new_name) != 0) {
+                    fprintf(stderr,"RotateLog::rotate_logs() rename() failed!\n");
+                    return false;
+                }
+            }
         }
 
-        if (m_file_ptr)
-            fclose(m_file_ptr);
+        if (access(LOG_FILE, F_OK) == 0) {
+            if (rename(LOG_FILE, LOG_FILE ".1") != 0) {
+                fprintf(stderr,"RotateLog::rotate_logs() rename() failed!\n");
+                return false;
+            }
+        }
 
-        rename(LOG_FILE, LOG_FILE ".1");
+        if (!open_log_file()) {
+            fprintf(stderr,"RotateLog::rotate_logs() open_log_file() failed!\n");
+            return false;
+        }
 
+        return true;
+    }
+
+    bool open_log_file() {
         m_file_ptr = fopen(LOG_FILE, "a");
-        if (!m_file_ptr)
-            fprintf(stderr,"RotateLog::rotate_logs() fopen() failed!");
+        if (m_file_ptr == nullptr) {
+            fprintf(stderr,"fopen() log file failed!\n");
+            return false;
+        }
+
+        return true;
+    }
+
+    bool close_log_file() {
+        if (m_file_ptr == nullptr)
+            return true;
+
+        if (fclose(m_file_ptr) != 0) {
+            fprintf(stderr,"fclose() log file failed!\n");
+            return false;
+        }
+
+        m_file_ptr = nullptr;
+        return true;
     }
 };
 
