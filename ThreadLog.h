@@ -340,8 +340,9 @@ public:
             struct timespec ts{};
             clock_gettime(CLOCK_REALTIME, &ts);
             now = localtime(&ts.tv_sec);
-            LOG("%02d:%02d:%02d:%03ld [%s][INFO]: ", now->tm_hour,
-                    now->tm_min, now->tm_sec, ts.tv_nsec / 1000000, ModuleName);
+            LOG("%04d/%02d/%02d %02d:%02d:%02d:%03ld [%s][INFO]: ",
+                    now->tm_year + 1900, now->tm_mon + 1, now->tm_mday,
+                    now->tm_hour, now->tm_min, now->tm_sec, ts.tv_nsec / 1000000, ModuleName);
 
             ThreadColor::getInstance().set();
 
@@ -353,8 +354,9 @@ public:
             ThreadColor::getInstance().reset();
 
             if (*getDepth() == 1) {
-                LOG("%02d:%02d:%02d:%03ld [%s][INFO]:\n", now->tm_hour,
-                        now->tm_min, now->tm_sec, ts.tv_nsec / 1000000, ModuleName);
+                LOG("%04d/%02d/%02d %02d:%02d:%02d:%03ld [%s][INFO]:\n",
+                    now->tm_year + 1900, now->tm_mon + 1, now->tm_mday,
+                    now->tm_hour, now->tm_min, now->tm_sec, ts.tv_nsec / 1000000, ModuleName);
             }
 
             fflush(stderr);
@@ -405,8 +407,10 @@ inline int fprintf(FILE *) {
       now = localtime(&ts.tv_sec);                                             \
       {                                                                        \
         std::lock_guard l(PrintLock::get());                                   \
-        LOG("%02d:%02d:%02d:%03ld [%s][INFO]: ", now->tm_hour,                 \
-                now->tm_min, now->tm_sec, ts.tv_nsec/1000000, ModuleName);     \
+        LOG("%04d/%02d/%02d %02d:%02d:%02d:%03ld [%s][INFO]: ",                \
+            now->tm_year + 1900, now->tm_mon + 1, now->tm_mday,                \
+            now->tm_hour, now->tm_min, now->tm_sec,                            \
+            ts.tv_nsec/1000000, ModuleName);                                   \
         ThreadColor::getInstance().set();                                      \
         std::string depth_name = "";                                           \
         std::string func_name = __PRETTY_FUNCTION__;                           \
@@ -437,8 +441,10 @@ inline int fprintf(FILE *) {
       {                                                                        \
         std::lock_guard l(PrintLock::get());                                   \
         PRINT_PLAIN("INFO", "{\n")                                             \
-        LOG("%02d:%02d:%02d:%03ld [%s][INFO]: ", now->tm_hour,                 \
-                now->tm_min, now->tm_sec, ts.tv_nsec/1000000,ModuleName);      \
+        LOG("%04d/%02d/%02d %02d:%02d:%02d:%03ld [%s][INFO]: ",                \
+            now->tm_year + 1900, now->tm_mon + 1, now->tm_mday,                \
+            now->tm_hour, now->tm_min, now->tm_sec,                            \
+            ts.tv_nsec/1000000, ModuleName);                                   \
         ThreadColor::getInstance().set();                                      \
         std::string depth_name = "";                                           \
         thread_depth_keeper.setDepthName(depth_name);                          \
@@ -460,8 +466,10 @@ inline int fprintf(FILE *) {
         clock_gettime(CLOCK_REALTIME,&ts);                                         \
         now = localtime(&ts.tv_sec);                                               \
                                                                                    \
-        LOG("%02d:%02d:%02d:%03ld [%s][%s]: ", now->tm_hour,                       \
-            now->tm_min, now->tm_sec, ts.tv_nsec/1000000, ModuleName,type);        \
+        LOG("%04d/%02d/%02d %02d:%02d:%02d:%03ld [%s][%s]: ",                      \
+            now->tm_year + 1900, now->tm_mon + 1, now->tm_mday,                    \
+            now->tm_hour, now->tm_min, now->tm_sec,                                \
+            ts.tv_nsec/1000000, ModuleName,type);                                  \
                                                                                    \
         ThreadColor::getInstance().set();                                          \
                                                                                    \
@@ -480,8 +488,10 @@ inline int fprintf(FILE *) {
     clock_gettime(CLOCK_REALTIME,&ts);                                         \
     now = localtime(&ts.tv_sec);                                               \
                                                                                \
-    LOG("%02d:%02d:%02d:%03ld [%s][%s]: ", now->tm_hour,                       \
-            now->tm_min, now->tm_sec, ts.tv_nsec/1000000, ModuleName,type);    \
+    LOG("%04d/%02d/%02d %02d:%02d:%02d:%03ld [%s][%s]: ",                      \
+        now->tm_year + 1900, now->tm_mon + 1, now->tm_mday,                    \
+        now->tm_hour, now->tm_min, now->tm_sec,                                \
+        ts.tv_nsec/1000000, ModuleName,type);                                  \
                                                                                \
     ThreadColor::getInstance().set();                                          \
                                                                                \
@@ -499,7 +509,7 @@ inline int fprintf(FILE *) {
     if (LogLevel::get() >= ERROR_LEVEL) {              \
       std::lock_guard ll(PrintLock::get());            \
       LOG("\e[31m");                                   \
-      PRINT(" ERR", __VA_ARGS__)                       \
+      PRINT("ERROR", __VA_ARGS__)                      \
     }                                                  \
   } while (0)
 
@@ -524,7 +534,7 @@ inline int fprintf(FILE *) {
   do {                                                 \
     if (LogLevel::get() >= DEBUG_LEVEL) {              \
       std::lock_guard ll(PrintLock::get());            \
-      PRINT("DBUG", __VA_ARGS__)                       \
+      PRINT("DEBUG", __VA_ARGS__)                      \
     }                                                  \
   } while (0)
 
