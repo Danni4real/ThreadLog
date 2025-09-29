@@ -509,7 +509,7 @@ inline int fprintf(FILE *) {
     if (LogLevel::get() >= ERROR_LEVEL) {              \
       std::lock_guard ll(PrintLock::get());            \
       LOG("\e[31m");                                   \
-      PRINT("ERROR", __VA_ARGS__)                      \
+      PRINT(" ERR", __VA_ARGS__)                      \
     }                                                  \
   } while (0)
 
@@ -534,7 +534,7 @@ inline int fprintf(FILE *) {
   do {                                                 \
     if (LogLevel::get() >= DEBUG_LEVEL) {              \
       std::lock_guard ll(PrintLock::get());            \
-      PRINT("DEBUG", __VA_ARGS__)                      \
+      PRINT("DBUG", __VA_ARGS__)                      \
     }                                                  \
   } while (0)
 
